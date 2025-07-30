@@ -3,3 +3,12 @@ node_modules
 /.cache
 /build
 .env
+postgres-data
+/public/images
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+.vercel

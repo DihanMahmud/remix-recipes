@@ -24,6 +24,64 @@ export default function handleRequest(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   loadContext: AppLoadContext
 ) {
+
+  // const ifNoneMatch = request.headers.get("If-None-Match")
+  // const etag = responseHeaders.get("etag")
+
+  // if (ifNoneMatch !== null && etag !== null && ifNoneMatch === etag) {
+  //   console.log("It is working", ifNoneMatch === etag);
+    
+  //   return new Response(null, {status: 304, headers: responseHeaders})
+  // }
+
+  //   console.log("It is not working", ifNoneMatch === etag);
+
+  // First, check if the client has an authentication cookie - this is crucial 
+  // for proper caching decisions
+  const hasCookies = request.headers.has("Cookie");
+  const hasAuth = request.headers.has("Authorization");
+
+  // Get the ETag values
+  const ifNoneMatch = request.headers.get("if-none-match");
+  const etag = responseHeaders.get("ETag") || responseHeaders.get("etag");
+
+  // Only perform 304 Not Modified responses when:
+  // 1. We have a valid ETag
+  // 2. Client sent If-None-Match
+  // 3. ETags match
+  // 4. AND authentication state hasn't changed 
+  // (if there are cookies/auth headers, we need to be careful about 304s)
+  if (
+    ifNoneMatch !== null && 
+    etag !== null && 
+    ifNoneMatch === etag
+  ) {
+    // For 304 responses, ensure Vary header is present
+    if (!responseHeaders.has("Vary")) {
+      responseHeaders.set("Vary", "Cookie, Authorization");
+    }
+    
+    return new Response(null, {
+      status: 304, 
+      headers: responseHeaders
+    });
+  }
+
+  // For all other responses, ensure important cache headers
+  if (!responseHeaders.has("Vary")) {
+    responseHeaders.set("Vary", "Cookie, Authorization");
+  }
+
+  // Ensure Cache-Control is appropriate for the authentication state
+  if (hasCookies || hasAuth) {
+    // For authenticated users, ensure we don't have public caching
+    if (!responseHeaders.has("Cache-Control") || 
+        responseHeaders.get("Cache-Control")?.includes("public")) {
+      responseHeaders.set("Cache-Control", "private, max-age=0, must-revalidate");
+    }
+  }
+
+
   return isbot(request.headers.get("user-agent") || "")
     ? handleBotRequest(
         request,

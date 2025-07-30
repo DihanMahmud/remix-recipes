@@ -1,0 +1,5 @@
+node_modules
+.git
+.env
+*.log
+//https://railway.com/project/2a76fcfa-e74a-41ad-abea-47cdc6751048
