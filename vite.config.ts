@@ -62,6 +62,8 @@ import { installGlobals } from "@remix-run/node";
 import { createRoutesFromFolders } from "@remix-run/v1-route-convention";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { netlifyPlugin } from "@netlify/remix-adapter/plugin";
+
 
 declare module "@remix-run/node" {
   interface Future {
@@ -112,6 +114,7 @@ export default defineConfig({
         };
       },
     }),
+    netlifyPlugin(),
     tsconfigPaths(),
   ],
   server: {
