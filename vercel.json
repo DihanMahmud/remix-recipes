@@ -1,5 +1,10 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "prisma generate && npm run build",
   "framework": "remix",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "functions": {
+    "app/entry.server.tsx": {
+      "includeFiles": "node_modules/.prisma/**"
+    }
+  }
 }
