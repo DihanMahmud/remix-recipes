@@ -41,6 +41,9 @@ import { requireLoggedInUser } from "~/utils/auth.server";
 import { useDebouncedFunction, useServerLayoutEffect } from "~/utils/misc";
 import { isOpeningOrClosing } from "~/utils/revalidation";
 import { validateForm } from "~/utils/validation";
+import { getStore } from "@netlify/blobs";
+import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { join } from "path";
 
 export function shouldRevalidate(arg: ShouldRevalidateFunctionArgs) {
   // console.log(!isOpeningOrClosing(arg), "id");
@@ -88,7 +91,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   // console.log(recipe, "37.....");
 
   return json({ recipe }, { headers: { "Cache-Control": "max-age=60" } });
-  
+
   // const response = json(
   //   { recipe },
   //   {
@@ -99,7 +102,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   // );
 
   // console.log("header: ", request.headers.get("Cache-Control"));
-  
 
   // return response
 }
@@ -165,18 +167,74 @@ export async function action({ request, params }: ActionFunctionArgs) {
     // }
     // formData = await unstable_parseMultipartFormData(request, uploadHandler)
 
-    const uploadHandler = unstable_composeUploadHandlers(
-      unstable_createFileUploadHandler({ directory: "public/images" }),
-      unstable_createMemoryUploadHandler()
-    );
+    // const uploadHandler = unstable_composeUploadHandlers(
+    //   unstable_createFileUploadHandler({ directory: "public/images" }),
+    //   unstable_createMemoryUploadHandler()
+    // );
+    // formData = await unstable_parseMultipartFormData(request, uploadHandler);
+    // // console.log(formData, "148");
+
+    // const image = formData.get("image") as File;
+    // // console.log(image, "151");
+
+    // if (image.size !== 0) {
+    //   formData.set("imageUrl", `/images/${image.name}`);
+    // }
+
+    // Check if we're in Netlify environment
+    const isNetlifyEnvironment =
+      process.env.NETLIFY === "true" || process.env.NODE_ENV === "production";
+
+    async function handleImageUpload(image: File): Promise<string> {
+      const timestamp = Date.now();
+      const extension = image.name.split(".").pop() || "jpg";
+      const filename = `recipe-${timestamp}-${Math.random()
+        .toString(36)
+        .substring(7)}.${extension}`;
+
+      if (isNetlifyEnvironment) {
+        // Production: Use Netlify Blobs
+        const store = getStore("recipe-images");
+        const buffer = await image.arrayBuffer();
+
+        await store.set(filename, buffer, {
+          metadata: {
+            contentType: image.type,
+            originalName: image.name,
+            uploadedAt: new Date().toISOString(),
+          },
+        });
+
+        return `/api/images/${filename}`;
+      } else {
+        // Development: Use local file system
+        const buffer = Buffer.from(await image.arrayBuffer());
+        const uploadsDir = join(process.cwd(), "public", "images");
+
+        // Create directory if it doesn't exist
+        if (!existsSync(uploadsDir)) {
+          mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        // Write file locally
+        const filePath = join(uploadsDir, filename);
+        writeFileSync(filePath, buffer);
+
+        return `/images/${filename}`;
+      }
+    }
+
+    // Your updated upload handler
+    const uploadHandler = unstable_createMemoryUploadHandler({
+      maxPartSize: 5_000_000, // 5MB limit
+    });
+
     formData = await unstable_parseMultipartFormData(request, uploadHandler);
-    // console.log(formData, "148");
-
     const image = formData.get("image") as File;
-    // console.log(image, "151");
 
-    if (image.size !== 0) {
-      formData.set("imageUrl", `/images/${image.name}`);
+    if (image && image.size !== 0) {
+      const imageUrl = await handleImageUpload(image);
+      formData.set("imageUrl", imageUrl);
     }
   } else {
     formData = await request.formData();
@@ -304,8 +362,6 @@ export function useRecipeContext() {
   }>();
 }
 
-
-
 export default function Recipe() {
   const data = useLoaderData();
   const actionData = useActionData();
@@ -389,7 +445,10 @@ export default function Recipe() {
           <Link
             to="update-meal-plan"
             replace
-            className={classNames("flex flex-col justify-center", data.recipe?.mealPlanMultiplier !== null ? "text-primary" : "")}
+            className={classNames(
+              "flex flex-col justify-center",
+              data.recipe?.mealPlanMultiplier !== null ? "text-primary" : ""
+            )}
           >
             <Calender />
           </Link>

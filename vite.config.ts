@@ -58,7 +58,6 @@
 
 
 import { vitePlugin as remix } from "@remix-run/dev";
-// import { installGlobals } from "@remix-run/node";
 import { createRoutesFromFolders } from "@remix-run/v1-route-convention";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -70,8 +69,6 @@ declare module "@remix-run/node" {
     v3_singleFetch: true;
   }
 }
-
-// installGlobals();
 
 export default defineConfig({
   plugins: [
