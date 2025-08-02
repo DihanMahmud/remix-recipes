@@ -13,8 +13,6 @@
     "test:e2e": "INCLUDE_TEST_ROUTES=true npx playwright test"
   },
   "dependencies": {
-    "@mjackson/file-storage": "^0.6.1",
-    "@mjackson/form-data-parser": "^0.7.0",
     "@netlify/blobs": "^10.0.8",
     "@netlify/remix-adapter": "^2.6.1",
     "@prisma/client": "^6.2.1",

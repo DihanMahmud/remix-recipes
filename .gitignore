@@ -5,6 +5,7 @@ node_modules
 .env
 postgres-data
 /public/images
+/abc
 
 # Playwright
 /test-results/
@@ -12,3 +13,4 @@ postgres-data
 /blob-report/
 /playwright/.cache/
 .vercel
+/recipe-images
