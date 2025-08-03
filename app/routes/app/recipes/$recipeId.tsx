@@ -220,61 +220,73 @@ export async function action({ request, params }: ActionFunctionArgs) {
     //   }
     // }
 
-    // Fix the environment detection
-    const isNetlifyEnvironment =
-      process.env.NETLIFY === "true" ||
-      process.env.AWS_LAMBDA_FUNCTION_NAME || // Netlify Functions run on AWS Lambda
-      process.env.LAMBDA_TASK_ROOT ||
-      !process.env.NODE_ENV ||
-      process.env.NODE_ENV === "production";
 
-    async function handleImageUpload(image: File): Promise<string> {
-      const timestamp = Date.now();
-      const extension = image.name.split(".").pop() || "jpg";
-      const filename = `recipe-${timestamp}-${Math.random()
-        .toString(36)
-        .substring(7)}.${extension}`;
+async function handleImageUpload(image: File): Promise<string> {
+  const timestamp = Date.now();
+  const extension = image.name.split('.').pop() || 'jpg';
+  const filename = `recipe-${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
+  
+  const isProduction = 
+    process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined ||
+    process.env.NETLIFY_DEV !== "true";
 
-      console.log("Environment check:", {
-        NETLIFY: process.env.NETLIFY,
-        NODE_ENV: process.env.NODE_ENV,
-        AWS_LAMBDA_FUNCTION_NAME: process.env.AWS_LAMBDA_FUNCTION_NAME,
-        isNetlifyEnvironment,
-      });
-
-      if (isNetlifyEnvironment) {
-        console.log("Using Netlify Blobs");
-        // Production: Use Netlify Blobs
-        const store = getStore("recipe-images");
-        const buffer = await image.arrayBuffer();
-
-        await store.set(filename, buffer, {
-          metadata: {
-            contentType: image.type,
-            originalName: image.name,
-            uploadedAt: new Date().toISOString(),
-          },
-        });
-
-        return `/api/images/${filename}`;
-      } else {
-        console.log("Using local file system");
-        // Development: Use local file system
-        const buffer = Buffer.from(await image.arrayBuffer());
-        const uploadsDir = join(process.cwd(), "public", "images");
-
-        // Create directory if it doesn't exist
-        if (!existsSync(uploadsDir)) {
-          mkdirSync(uploadsDir, { recursive: true });
+  console.log("Upload debug:", {
+    filename,
+    fileSize: image.size,
+    isProduction,
+    AWS_LAMBDA_FUNCTION_NAME: process.env.AWS_LAMBDA_FUNCTION_NAME,
+    NETLIFY_DEV: process.env.NETLIFY_DEV
+  });
+  
+  if (isProduction) {
+    try {
+      console.log("Attempting to store in Netlify Blobs...");
+      const store = getStore("recipe-images");
+      const buffer = await image.arrayBuffer();
+      
+      console.log("Buffer size:", buffer.byteLength);
+      
+      // Store the image
+      await store.set(filename, buffer, {
+        metadata: {
+          contentType: image.type,
+          originalName: image.name,
+          uploadedAt: new Date().toISOString(),
+          size: image.size.toString()
         }
-
-        // Write file locally
-        const filePath = join(uploadsDir, filename);
-        writeFileSync(filePath, buffer);
-
-        return `/images/${filename}`;
+      });
+      
+      // Verify it was stored
+      const stored = await store.get(filename);
+      console.log("Verification - image stored:", stored !== null);
+      
+      if (!stored) {
+        throw new Error("Image was not stored properly");
       }
+      
+      console.log("Successfully stored image:", filename);
+      return `/api/images/${filename}`;
+      
+    } catch (error) {
+      console.error("Netlify Blobs upload error:", error);
+      throw new Error(`Failed to upload image: ${error.message}`);
     }
+  } else {
+    // Development code remains the same
+    console.log("Using local file system for development");
+    const buffer = Buffer.from(await image.arrayBuffer());
+    const uploadsDir = join(process.cwd(), "public", "images");
+    
+    if (!existsSync(uploadsDir)) {
+      mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    const filePath = join(uploadsDir, filename);
+    writeFileSync(filePath, buffer);
+    
+    return `/images/${filename}`;
+  }
+}
 
     // Your updated upload handler
     const uploadHandler = unstable_createMemoryUploadHandler({
