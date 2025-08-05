@@ -47,11 +47,11 @@ export function shouldRevalidate(arg: ShouldRevalidateFunctionArgs) {
   return !isOpeningOrClosing(arg);
 }
 
-export const headers: HeadersFunction = ({ loaderHeaders }) => {
-  return {
-    "Cache-Control": loaderHeaders.get("Cache-Control") ?? "no-cache",
-  };
-};
+// export const headers: HeadersFunction = ({ loaderHeaders }) => {
+//   return {
+//     "Cache-Control": loaderHeaders.get("Cache-Control") ?? "no-cache",
+//   };
+// };
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const user = await requireLoggedInUser(request);

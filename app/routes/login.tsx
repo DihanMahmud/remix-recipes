@@ -8,9 +8,8 @@ import { generateMagicLinks, sendMagicLinkEmail } from "~/magic-links.server";
 import { getUser } from "~/models/user.server";
 import { commitSession, getSession } from "~/sessions";
 import { validateForm } from "~/utils/validation";
-import {v4 as uuid} from "uuid"
+import { v4 as uuid } from "uuid";
 import { requireLoggedOutUser } from "~/utils/auth.server";
-
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -22,24 +21,21 @@ const loginSchema = z.object({
 //   }),
 // });
 
-export const loader: LoaderFunction = async ({request}) => {
+export const loader: LoaderFunction = async ({ request }) => {
+  //if we want the cookie value in a loader,
+  // const getCookie = request.headers.get("cookie");
+  // const cookieValue = await sessionCookie.parse(getCookie); // get data from cookie by this
+  // const session = await getSession(getCookie); // (getSession)it is used by remix session helper. using getSession() you can get data where ever the data is stored.
 
-    //if we want the cookie value in a loader,
-    // const getCookie = request.headers.get("cookie");    
-    // const cookieValue = await sessionCookie.parse(getCookie); // get data from cookie by this
-    // const session = await getSession(getCookie); // (getSession)it is used by remix session helper. using getSession() you can get data where ever the data is stored.
+  // console.log(session.data);
 
+  await requireLoggedOutUser(request);
 
-    // console.log(session.data);
-
-    await requireLoggedOutUser(request);
-    
-
-    return null
-}
+  return null;
+};
 
 export const action: ActionFunction = async ({ request }) => {
-  await requireLoggedOutUser(request)
+  await requireLoggedOutUser(request);
   const getCookie = request.headers.get("cookie");
   const session = await getSession(getCookie);
   const formData = await request.formData();
@@ -48,15 +44,17 @@ export const action: ActionFunction = async ({ request }) => {
     formData,
     loginSchema,
     async ({ email }) => {
-      const nonce = uuid()
+      const nonce = uuid();
       // session.flash("nonce", nonce); // use .flash instead of .set, after using flash if you use .get to retrive the cookie, it will delete the cookie after .get | .flash is used for seting the cookie only for one time. but remember that after using .get you have to set the cookie in the header, commitSession(session) the "session". But there is problem using flash, see 84 no video after 6:30
       session.set("nonce", nonce);
       const link = generateMagicLinks(email, nonce);
       console.log(link, "hello");
       await sendMagicLinkEmail(link, email);
 
-      return data("ok", {status: 200, headers: { "Set-Cookie": await commitSession(session) }})
-      
+      return data(
+        { ok: link },
+        { status: 200, headers: { "Set-Cookie": await commitSession(session) } }
+      );
     },
     (errors) => json({ errors, email: formData.get("email") }, { status: 400 })
   );
@@ -70,33 +68,37 @@ export default function Login() {
 
   return (
     <div className="text-center mt-36">
-      {actionData === "ok" ? <div>Please check your email</div> :
-      <div>
-      <h1 className="text-3xl mb-8">Remix Recipes</h1>
-      <form method="post" className="mx-auto md:w-1/3">
-        <div className="text-left pb-4">
-          <PrimaryInput
-            type="email"
-            placeholder="Email"
-            autoComplete="off"
-            name="email"
-            defaultValue={actionData?.email}
-          />
-          <ErrorMessage>{actionData?.errors?.email}</ErrorMessage>
-        </div>
+      {actionData === "ok" ? (
+        <>
+          <div>Please check your email</div>{" "}
+          <div className="mt-1 p-1 rounded bg-slate-300">
+            Demo: <a href={actionData?.ok}>Click this</a>
+          </div>
+        </>
+      ) : (
+        <div>
+          <h1 className="text-3xl mb-8">Remix Recipes</h1>
+          <form method="post" className="mx-auto md:w-1/3">
+            <div className="text-left pb-4">
+              <PrimaryInput
+                type="email"
+                placeholder="Email"
+                autoComplete="off"
+                name="email"
+                defaultValue={actionData?.email}
+              />
+              <ErrorMessage>{actionData?.errors?.email}</ErrorMessage>
+            </div>
 
-        <PrimaryButton className={classNames("w-1/3 mx-auto")}>
-          Log In
-        </PrimaryButton>
-      </form> </div> }
+            <PrimaryButton className={classNames("w-1/3 mx-auto")}>
+              Log In
+            </PrimaryButton>
+          </form>{" "}
+        </div>
+      )}
     </div>
   );
 }
-
-
-
-
-
 
 // async ({ email }) => {
 //   const user = await getUser(email);
@@ -106,7 +108,6 @@ export default function Login() {
 //       { status: 401 }
 //     );
 //   }
-  
 
 //   // in general way or how web works
 //   // return data({user}, {
