@@ -52,7 +52,7 @@ export const action: ActionFunction = async ({ request }) => {
       await sendMagicLinkEmail(link, email);
 
       return data(
-        { "ok": link },
+        "ok",
         { status: 200, headers: { "Set-Cookie": await commitSession(session) } }
       );
     },
@@ -71,9 +71,9 @@ export default function Login() {
       {actionData === "ok" ? (
         <>
           <div>Please check your email</div>{" "}
-          <div className="mt-1 p-1 rounded bg-slate-300">
+          {/* <div className="mt-1 p-1 rounded bg-slate-300">
             Demo: <a href={actionData?.ok}>Click this</a>
-          </div>
+          </div> */}
         </>
       ) : (
         <div>
