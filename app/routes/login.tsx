@@ -52,7 +52,7 @@ export const action: ActionFunction = async ({ request }) => {
       await sendMagicLinkEmail(link, email);
 
       return data(
-        { ok: link },
+        { "ok": link },
         { status: 200, headers: { "Set-Cookie": await commitSession(session) } }
       );
     },
